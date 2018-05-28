@@ -32,11 +32,14 @@ static inline unsigned int riscv_insn_length (insn_t insn)
 {
   if ((insn & 0x3) != 0x3) /* RVC.  */
     return 2;
-  if ((insn & 0x1f) != 0x1f) /* Base ISA and extensions in 32-bit space.  */
+//  if ((insn & 0x1f) != 0x1f) /* Base ISA and extensions in 32-bit space.  */
+  if ((insn & 0xff) != 0xff) /* LISC */
     return 4;
-  if ((insn & 0x3f) == 0x1f) /* 48-bit extensions.  */
+//  if ((insn & 0x3f) == 0x1f) /* 48-bit extensions.  */
+  if ((insn & 0x1ff) == 0xff) /* LISC */
     return 6;
-  if ((insn & 0x7f) == 0x3f) /* 64-bit extensions.  */
+//  if ((insn & 0x7f) == 0x3f) /* 64-bit extensions.  */
+  if ((insn & 0x3ff) == 0x1ff) /* LISC */
     return 8;
   /* Longer instructions not supported at the moment.  */
   return 2;
@@ -56,7 +59,7 @@ static const char * const riscv_pred_succ[16] = {
 #define RVC_BRANCH_BITS 8
 #define RVC_BRANCH_REACH ((1ULL << RVC_BRANCH_BITS) * RISCV_BRANCH_ALIGN)
 
-#define RV_X(x, s, n) (((x) >> (s)) & ((1 << (n)) - 1))
+/* #define RV_X(x, s, n) (((x) >> (s)) & ((1 << (n)) - 1))
 #define RV_IMM_SIGN(x) (-(((x) >> 31) & 1))
 
 #define EXTRACT_ITYPE_IMM(x) \
@@ -68,7 +71,22 @@ static const char * const riscv_pred_succ[16] = {
 #define EXTRACT_UTYPE_IMM(x) \
   ((RV_X(x, 12, 20) << 12) | (RV_IMM_SIGN(x) << 32))
 #define EXTRACT_UJTYPE_IMM(x) \
-  ((RV_X(x, 21, 10) << 1) | (RV_X(x, 20, 1) << 11) | (RV_X(x, 12, 8) << 12) | (RV_IMM_SIGN(x) << 20))
+  ((RV_X(x, 21, 10) << 1) | (RV_X(x, 20, 1) << 11) | (RV_X(x, 12, 8) << 12) | (RV_IMM_SIGN(x) << 20)) */
+#define RV_X(x, s, n) (((unsigned long)(x) >> (s)) & ((1 << (n)) - 1))
+#define RV_IMM_SIGN(x, e) (-(((unsigned long)(x) >> e) & 1))
+
+#define EXTRACT_ITYPE_IMM(x) \
+  (RV_X(x, 12, 12) | (RV_IMM_SIGN(x, 23) << 12))
+#define EXTRACT_STYPE_IMM(x) \
+  (RV_X(x, 12, 8) | (RV_X(x, 8, 4) << 8) | (RV_IMM_SIGN(x, 11) << 12))
+#define EXTRACT_SBTYPE_IMM(x) \
+  ((RV_X(x, 13, 7) << 1) | (RV_X(x, 8, 4) << 8) | (RV_X(x, 12, 1) << 12) | (RV_IMM_SIGN(x, 12) << 13))
+#define EXTRACT_UTYPE_IMM(x) \
+  ((RV_X(x, 12, 20) << 12) | (RV_IMM_SIGN(x, 31) << 32))
+#define EXTRACT_UJTYPE_IMM(x) \
+  ((RV_X(x, 13, 15) << 1) | (RV_X(x, 8, 4) << 16) | (RV_X(x, 12, 1) << 20) | (RV_IMM_SIGN(x, 12) << 21))
+
+
 #define EXTRACT_RVC_IMM(x) \
   (RV_X(x, 2, 5) | (-RV_X(x, 12, 1) << 5))
 #define EXTRACT_RVC_LUI_IMM(x) \
@@ -95,8 +113,10 @@ static const char * const riscv_pred_succ[16] = {
   ((RV_X(x, 3, 2) << 1) | (RV_X(x, 10, 2) << 3) | (RV_X(x, 2, 1) << 5) | (RV_X(x, 5, 2) << 6) | (-RV_X(x, 12, 1) << 8))
 #define EXTRACT_RVC_J_IMM(x) \
   ((RV_X(x, 3, 3) << 1) | (RV_X(x, 11, 1) << 4) | (RV_X(x, 2, 1) << 5) | (RV_X(x, 7, 1) << 6) | (RV_X(x, 6, 1) << 7) | (RV_X(x, 9, 2) << 8) | (RV_X(x, 8, 1) << 10) | (-RV_X(x, 12, 1) << 11))
+/*#define EXTRACT_I1TYPE_UIMM(x) \
+  (RV_X(x, 15, 5)) */
 #define EXTRACT_I1TYPE_UIMM(x) \
-  (RV_X(x, 15, 5))
+  (RV_X(x, 24, 5) | RV_X(x, 31, 1))
 #define EXTRACT_I6TYPE_IMM(x) \
   ((RV_X(x, 20, 5)<<1)|RV_X(x, 25, 1))
 #define EXTRACT_I5TYPE_UIMM(x) \
@@ -106,7 +126,7 @@ static const char * const riscv_pred_succ[16] = {
 #define EXTRACT_I5_1_TYPE_IMM(x) \
   (RV_X(x, 20, 5))
 
-#define ENCODE_ITYPE_IMM(x) \
+/* #define ENCODE_ITYPE_IMM(x) \
   (RV_X(x, 0, 12) << 20)
 #define ENCODE_STYPE_IMM(x) \
   ((RV_X(x, 0, 5) << 7) | (RV_X(x, 5, 7) << 25))
@@ -115,7 +135,19 @@ static const char * const riscv_pred_succ[16] = {
 #define ENCODE_UTYPE_IMM(x) \
   (RV_X(x, 12, 20) << 12)
 #define ENCODE_UJTYPE_IMM(x) \
-  ((RV_X(x, 1, 10) << 21) | (RV_X(x, 11, 1) << 20) | (RV_X(x, 12, 8) << 12) | (RV_X(x, 20, 1) << 31))
+  ((RV_X(x, 1, 10) << 21) | (RV_X(x, 11, 1) << 20) | (RV_X(x, 12, 8) << 12) | (RV_X(x, 20, 1) << 31)) */
+#define ENCODE_ITYPE_IMM(x) \
+  (RV_X(x, 0, 12) << 12)
+#define ENCODE_STYPE_IMM(x) \
+  ((RV_X(x, 0, 8) << 12) | (RV_X(x, 8, 4) << 8))
+#define ENCODE_SBTYPE_IMM(x) \
+  ((RV_X(x, 1, 7) << 13) | (RV_X(x, 8, 4) << 8) | (RV_X(x, 12, 1) << 12) )
+#define ENCODE_UTYPE_IMM(x) \
+  (RV_X(x, 12, 20) << 12)
+#define ENCODE_UJTYPE_IMM(x) \
+  ((RV_X(x, 1, 15) << 13) | (RV_X(x, 16, 4) << 8) | (RV_X(x, 20, 1) << 12) )
+
+
 #define ENCODE_RVC_IMM(x) \
   ((RV_X(x, 0, 5) << 2) | (RV_X(x, 5, 1) << 12))
 #define ENCODE_RVC_LUI_IMM(x) \
@@ -142,8 +174,10 @@ static const char * const riscv_pred_succ[16] = {
   ((RV_X(x, 1, 2) << 3) | (RV_X(x, 3, 2) << 10) | (RV_X(x, 5, 1) << 2) | (RV_X(x, 6, 2) << 5) | (RV_X(x, 8, 1) << 12))
 #define ENCODE_RVC_J_IMM(x) \
   ((RV_X(x, 1, 3) << 3) | (RV_X(x, 4, 1) << 11) | (RV_X(x, 5, 1) << 2) | (RV_X(x, 6, 1) << 7) | (RV_X(x, 7, 1) << 6) | (RV_X(x, 8, 2) << 9) | (RV_X(x, 10, 1) << 8) | (RV_X(x, 11, 1) << 12))
+/*#define ENCODE_I1TYPE_UIMM(x) \
+  (RV_X(x, 0, 5) << 15) */
 #define ENCODE_I1TYPE_UIMM(x) \
-  (RV_X(x, 0, 5) << 15)
+  (RV_X(x, 0, 4) << 24) | (RV_X(x, 0, 1) << 31)
 #define ENCODE_I6TYPE_IMM(x) \
   ((RV_X(x, 1, 5)<<20)|(RV_X(x, 0, 1)<<25))
 #define ENCODE_I5TYPE_UIMM(x) \
@@ -213,43 +247,70 @@ static const char * const riscv_pred_succ[16] = {
 
 /* RV fields.  */
 
-#define OP_MASK_OP		0x7f
+/* #define OP_MASK_OP		0x7f
 #define OP_SH_OP		0
 #define OP_MASK_RS2		0x1f
 #define OP_SH_RS2		20
 #define OP_MASK_RS1		0x1f
 #define OP_SH_RS1		15
-#define OP_MASK_RS3I           0x1f
-#define OP_SH_RS3I             25
-#define OP_MASK_RS3		0x1f
-#define OP_SH_RS3		27
 #define OP_MASK_RD		0x1f
 #define OP_SH_RD		7
 #define OP_MASK_SHAMT		0x3f
 #define OP_SH_SHAMT		20
 #define OP_MASK_SHAMTW		0x1f
 #define OP_SH_SHAMTW		20
-#define OP_MASK_RM		0x7
-#define OP_SH_RM		12
 #define OP_MASK_PRED		0xf
 #define OP_SH_PRED		24
 #define OP_MASK_SUCC		0xf
 #define OP_SH_SUCC		20
+*/
+/* begin lisc */
+#define OP_MASK_OP		0xff
+#define OP_SH_OP		0
+#define OP_MASK_RS2		0xf
+#define OP_SH_RS2		20
+#define OP_MASK_RS1		0xf
+#define OP_SH_RS1		24	
+#define OP_MASK_RD		0xf
+#define OP_SH_RD		8
+#define OP_MASK_SHAMT		0x3f
+#define OP_SH_SHAMT		16
+#define OP_MASK_SHAMTW		0x1f
+#define OP_SH_SHAMTW		16
+#define OP_MASK_PRED		0xf
+#define OP_SH_PRED		20
+#define OP_MASK_SUCC		0xf
+#define OP_SH_SUCC		15	
 #define OP_MASK_AQ		0x1
-#define OP_SH_AQ		26
+#define OP_SH_AQ		17
 #define OP_MASK_RL		0x1
-#define OP_SH_RL		25
+#define OP_SH_RL		16
+#define OP_MASK_CLIP3		0x7
+#define OP_SH_CLIP3		28
+#define OP_MASK_CLIP4		0xf
+#define OP_SH_CLIP4		28
+#define OP_MASK_SHAMT3		0x7
+#define OP_SH_SHAMT3		21
+#define OP_MASK_SHAMT2		0x3
+#define OP_SH_SHAMT2		22
+#define OP_MASK_CSR		0xfff
+#define OP_SH_CSR		12
+#define OP_MASK_IMM5		0xf
+#define OP_SH_IMM5		24
 #define OP_MASK_IMM12		0xfff
-#define OP_SH_IMM12		20
-#define OP_MASK_IMM5		0x1f
-#define OP_SH_IMM5		15
+#define OP_SH_IMM12		12
+/* end lisc */
+#define OP_MASK_RM		0x7
+#define OP_SH_RM		12
+#define OP_MASK_RS3I            0x1f
+#define OP_SH_RS3I              16
+#define OP_MASK_RS3		0xf
+#define OP_SH_RS3		16
 #define OP_MASK_IMM6		0x3f
 #define OP_SH_IMM6		20
 
 #define OP_MASK_CUSTOM_IMM	0x7f
 #define OP_SH_CUSTOM_IMM	25
-#define OP_MASK_CSR		0xfff
-#define OP_SH_CSR		20
 
 /* RVC fields.  */
 
@@ -269,7 +330,7 @@ static const char * const riscv_pred_succ[16] = {
 #define X_T0 5
 #define X_T1 6
 #define X_T2 7
-#define X_T3 28
+#define X_T3 8 /* LISC */
 
 #define NGPR 32
 #define NFPR 32

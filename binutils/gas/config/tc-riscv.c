@@ -562,13 +562,15 @@ arg_lookup (char **s, const char *const *array, size_t size, unsigned *regnop)
 static int
 validate_riscv_insn (const struct riscv_opcode *opc)
 {
-  const char *p = opc->args;
+  const char *p = opc->args;//not real opcode
+  if(!strcmp(p,"lb d,o(s)")) as_bad (_("opc->mask: %s"),opc->mask);
   char c;
-  insn_t used_bits = opc->mask;
-  int insn_width = 8 * riscv_insn_length (opc->match);
-  insn_t required_bits = ~0ULL >> (64 - insn_width);
-
-  if ((used_bits & opc->match) != (opc->match & required_bits))
+  insn_t used_bits = opc->mask; //mask
+	//printf("used_bits: %llu\n",opc->mask);
+  int insn_width = 8 * riscv_insn_length (opc->match); // 16 ,32
+  insn_t required_bits = ~0ULL >> (64 - insn_width); // 低16、32位全为1
+	
+  if ((used_bits & opc->match) != (opc->match & required_bits))//mask & match == match (& 111111)
     {
       as_bad (_("internal: bad RISC-V opcode (mask error): %s %s. Used bits: %lX, Match bits: %lX, Required bits: %lX, Eval: %lX, Insn width=%d"),
 	      opc->name, opc->args, used_bits, opc->match, required_bits, (used_bits & opc->match), insn_width);
@@ -581,48 +583,48 @@ validate_riscv_insn (const struct riscv_opcode *opc)
       {
       /* Xcustom */
       case '^':
-	switch (c = *p++)
-	  {
-	  case 'd': USE_BITS (OP_MASK_RD, OP_SH_RD); break;
-	  case 's': USE_BITS (OP_MASK_RS1, OP_SH_RS1); break;
-	  case 't': USE_BITS (OP_MASK_RS2, OP_SH_RS2); break;
-	  case 'j': USE_BITS (OP_MASK_CUSTOM_IMM, OP_SH_CUSTOM_IMM); break;
-	  }
-	break;
+				switch (c = *p++)
+	  		{
+	  			case 'd': USE_BITS (OP_MASK_RD, OP_SH_RD); break;
+	  			case 's': USE_BITS (OP_MASK_RS1, OP_SH_RS1); break;
+	  			case 't': USE_BITS (OP_MASK_RS2, OP_SH_RS2); break;
+	  			case 'j': USE_BITS (OP_MASK_CUSTOM_IMM, OP_SH_CUSTOM_IMM); break;//[31,25]
+	  		}
+				break;
       case 'C': /* RVC */
-	switch (c = *p++)
-	  {
-	  case 'a': used_bits |= ENCODE_RVC_J_IMM(-1U); break;
-	  case 'c': break; /* RS1, constrained to equal sp */
-	  case 'i': used_bits |= ENCODE_RVC_SIMM3(-1U); break;
-	  case 'j': used_bits |= ENCODE_RVC_IMM(-1U); break;
-	  case 'k': used_bits |= ENCODE_RVC_LW_IMM(-1U); break;
-	  case 'l': used_bits |= ENCODE_RVC_LD_IMM(-1U); break;
-	  case 'm': used_bits |= ENCODE_RVC_LWSP_IMM(-1U); break;
-	  case 'n': used_bits |= ENCODE_RVC_LDSP_IMM(-1U); break;
-	  case 'p': used_bits |= ENCODE_RVC_B_IMM(-1U); break;
-	  case 's': USE_BITS (OP_MASK_CRS1S, OP_SH_CRS1S); break;
-	  case 't': USE_BITS (OP_MASK_CRS2S, OP_SH_CRS2S); break;
-	  case 'u': used_bits |= ENCODE_RVC_IMM(-1U); break;
-	  case 'v': used_bits |= ENCODE_RVC_IMM(-1U); break;
-	  case 'w': break; /* RS1S, constrained to equal RD */
-	  case 'x': break; /* RS2S, constrained to equal RD */
-	  case 'K': used_bits |= ENCODE_RVC_ADDI4SPN_IMM(-1U); break;
-	  case 'L': used_bits |= ENCODE_RVC_ADDI16SP_IMM(-1U); break;
-	  case 'M': used_bits |= ENCODE_RVC_SWSP_IMM(-1U); break;
-	  case 'N': used_bits |= ENCODE_RVC_SDSP_IMM(-1U); break;
-	  case 'U': break; /* RS1, constrained to equal RD */
-	  case 'V': USE_BITS (OP_MASK_CRS2, OP_SH_CRS2); break;
-	  case '<': used_bits |= ENCODE_RVC_IMM(-1U); break;
-	  case '>': used_bits |= ENCODE_RVC_IMM(-1U); break;
-	  case 'T': USE_BITS (OP_MASK_CRS2, OP_SH_CRS2); break;
-	  case 'D': USE_BITS (OP_MASK_CRS2S, OP_SH_CRS2S); break;
-	  default:
-	    as_bad (_("internal: bad RISC-V opcode (unknown operand type `C%c'): %s %s"),
-		    c, opc->name, opc->args);
-	    return 0;
-	  }
-	break;
+				switch (c = *p++)
+	  		{
+	  			case 'a': used_bits |= ENCODE_RVC_J_IMM(-1U); break;
+	  			case 'c': break; /* RS1, constrained to equal sp */
+	  			case 'i': used_bits |= ENCODE_RVC_SIMM3(-1U); break;
+	  			case 'j': used_bits |= ENCODE_RVC_IMM(-1U); break;
+	  			case 'k': used_bits |= ENCODE_RVC_LW_IMM(-1U); break;
+	  			case 'l': used_bits |= ENCODE_RVC_LD_IMM(-1U); break;
+	  			case 'm': used_bits |= ENCODE_RVC_LWSP_IMM(-1U); break;
+	  			case 'n': used_bits |= ENCODE_RVC_LDSP_IMM(-1U); break;
+	  			case 'p': used_bits |= ENCODE_RVC_B_IMM(-1U); break;
+	  			case 's': USE_BITS (OP_MASK_CRS1S, OP_SH_CRS1S); break;
+	  			case 't': USE_BITS (OP_MASK_CRS2S, OP_SH_CRS2S); break;
+	  			case 'u': used_bits |= ENCODE_RVC_IMM(-1U); break;
+	  			case 'v': used_bits |= ENCODE_RVC_IMM(-1U); break;
+	  			case 'w': break; /* RS1S, constrained to equal RD */
+	  			case 'x': break; /* RS2S, constrained to equal RD */
+	  			case 'K': used_bits |= ENCODE_RVC_ADDI4SPN_IMM(-1U); break;
+	  			case 'L': used_bits |= ENCODE_RVC_ADDI16SP_IMM(-1U); break;
+	  			case 'M': used_bits |= ENCODE_RVC_SWSP_IMM(-1U); break;
+	  			case 'N': used_bits |= ENCODE_RVC_SDSP_IMM(-1U); break;
+	  			case 'U': break; /* RS1, constrained to equal RD */
+	  			case 'V': USE_BITS (OP_MASK_CRS2, OP_SH_CRS2); break;
+	  			case '<': used_bits |= ENCODE_RVC_IMM(-1U); break;
+	  			case '>': used_bits |= ENCODE_RVC_IMM(-1U); break;
+	  			case 'T': USE_BITS (OP_MASK_CRS2, OP_SH_CRS2); break;
+	  			case 'D': USE_BITS (OP_MASK_CRS2S, OP_SH_CRS2S); break;
+	  			default:
+	    			as_bad (_("internal: bad RISC-V opcode (unknown operand type `C%c'): %s %s"),
+		    		c, opc->name, opc->args);
+	    			return 0;
+	  			}
+				break;
       case ',': break;
       case '(': break;
       case ')': break;
@@ -683,13 +685,15 @@ validate_riscv_insn (const struct riscv_opcode *opc)
 	return 0;
       }
 #undef USE_BITS
-  if (used_bits != required_bits)
+  if (used_bits != required_bits)//32位的话是 0x00000000 ffffffff,mask & Rd,Rs,Rt,Imm后
     {
       as_bad (_("internal: bad RISC-V opcode (bits 0x%lx undefined): %s %s, width=%d"),
 	      ~(long)(used_bits & required_bits), opc->name, opc->args, insn_width);
-      return 0;
+				as_bad (_("used_bits: %lx ,require_bits: %lx"),used_bits,required_bits);
+				as_bad (_("opc->mask: 0x%lx,opc->match: 0x%lx"),opc->mask,opc->match);
+      return 0;//指令 invalid
     }
-  return 1;
+  return 1;//指令valid
 }
 
 struct percent_op_match
